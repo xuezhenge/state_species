@@ -1,0 +1,120 @@
+rm()
+rm(list=ls())
+library(terra)
+library(rgdal)
+library(dismo)
+library(tools)
+library(dplyr)
+library(raster)
+library(tictoc)
+library(ggridges)
+library(reshape2)
+
+ForI <- 'insects'
+setwd("/Volumes/UoG_xuezhen/state_species_2024/git/state_species")
+
+if (ForI == 'flowers'){
+  out_folder = 'outplots_flowers'
+  outplot_folder = 'figure_flowers'
+}else{
+  out_folder = 'outplots_insects'
+  outplot_folder = 'figure_insects'
+}
+
+
+#us map
+us_map <- st_as_sf(tigris::states(cb = TRUE))
+# continental_us
+us_map <- us_map %>% 
+  filter(!STATEFP %in% c("02", "15", "60", "66", "69", "72", "78"))
+
+get_rangechange <- function(stateID,state.name,species){
+  hist_proj <- terra::rast(paste0(out_folder,'/',species,'/ensmean_hist/omth10.tif'))
+  #make sure all the maps have the same crs
+  crs_raster <- crs(hist_proj)
+  if (st_crs(us_map) != crs_raster) {
+    us_map_transformed <- st_transform(us_map, crs_raster)
+  } else {
+    us_map_transformed <- us_map
+  }
+  state <- us_map_transformed[us_map_transformed$STUSPS == stateID, ]
+  
+  # clip raster based on US map and state map
+  hist_projUS <- crop(hist_proj, extent(us_map_transformed))
+  hist_projUS <- mask(hist_projUS, us_map_transformed)
+  plot(hist_projUS)
+  hist_projState <- crop(hist_projUS, extent(state))
+  hist_projState <- mask(hist_projState,state)
+  plot(hist_projState)
+  
+  # Convert the continious raster to binary raster
+  threshold = 0.2
+  binary_hist_raster <- app(hist_projState, function(x) as.integer(x >= threshold))
+  plot(binary_hist_raster)
+  
+  # repeat the same thing for the future raster plot
+  fut_proj <- terra::rast(paste0(out_folder,'/',species,'/2071-2100_ssp585/omth10.tif'))
+  fut_projUS <- crop(fut_proj, extent(us_map_transformed)) 
+  hist_projUS <- mask(fut_projUS, us_map_transformed)
+  fut_projState <- crop(fut_projUS, extent(state))
+  fut_projState <- mask(fut_projState,state)
+  binary_fut_raster <- app(fut_projState, function(x) as.integer(x >= threshold))
+  plot(binary_fut_raster)
+  
+  myBiomodRangeSize <- BIOMOD_RangeSize(proj.current = binary_hist_raster, proj.future = binary_fut_raster)
+  PercLoss <- myBiomodRangeSize$Compt.By.Models[5]
+  PercGain <- myBiomodRangeSize$Compt.By.Models[6]
+  PercStable <- 100 - PercLoss - PercGain
+  RangeChange <- data.frame(State = stateID, Species = species, Loss = PercLoss, Stable = PercStable, Gain = PercGain)
+  return(RangeChange)
+}
+
+
+all_stateID_species = read.csv(paste0('inputs/state_',ForI,'_analysis.csv'))
+len = nrow(all_stateID_species)
+
+RangeChange_all <- data.frame()
+for (i in 1:len){
+  stateID <- all_stateID_species$ID[i]
+  state.name <- all_stateID_species$state[i]
+  species<- all_stateID_species$spec_name[i]
+  print(paste0(i,"_",stateID,"_",state.name,"_",species))
+  RangeChange <- get_rangechange(stateID,state.name,species)
+  RangeChange_all <- rbind(RangeChange_all,RangeChange)
+}
+
+
+
+df = RangeChange_all
+# Reshape the data from wide to long
+long_df <- melt(df, id.vars = c("State", "Species"))
+# Create the Likert-like plot
+ggplot(long_df, aes(x = State, y = value, fill = variable)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  # Flips the axes so that states are on the y-axis
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")  # Uses a color palette that is visually appealing
+
+# Assuming your data frame is named 'df'
+df <- df %>%
+  mutate(Loss = -Loss) # Make Loss negative for plotting on the left
+
+# Reshape the data from wide to long
+long_df <- df %>%
+  gather(key = "Category", value = "Percentage", -State, -Species)
+
+# Create the Likert-like plot
+ggplot(long_df, aes(x = State, y = Percentage, fill = Category)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%0.1f%%", abs(Percentage))), position = position_stack(vjust = 0.5), size = 3) +
+  scale_y_continuous(labels = abs, breaks = seq(-100, 100, by = 25)) + # Correct the labels to be positive
+  coord_flip() +  # Flip the coordinates to put states on the y-axis
+  labs(x = NULL, y = "Percentage", fill = "Category") + # Add labels
+  scale_fill_manual(values = c("Loss" = "lightblue", "Stable" = "grey92", "Gain" = "tan3")) + # Set custom colors
+  theme_minimal()+ # Use a minimal theme for a clean look
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.border = element_rect(colour = "black", fill=NA, size=1) # Add panel border
+  )
+
