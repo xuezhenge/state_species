@@ -5,17 +5,14 @@ library(rgdal)
 library(dismo)
 library(tools)
 library(dplyr)
-library(biomod2)
-library(parallel)
-library(doParallel)
-library(argparse)
-library(raster)
 library(tictoc)
 library(introdataviz)
 library(sf)
+library(RColorBrewer)
+library(ggplot2)
 
 
-setwd("/Volumes/UoG_xuezhen/state_species_2024")
+setwd("/Volumes/UoG_xuezhen/state_species_2024/git/state_species")
 ForI = 'flowers'
 
 if (ForI == 'flowers'){
@@ -33,10 +30,10 @@ us_map <- us_map %>%
   filter(!STATEFP %in% c("02", "15", "60", "66", "69", "72", "78"))
 
 plot_proj_map<- function(stateID,state.name,species,time.period){
-  if (time.period == '1971-2000'){
+  if (time.period == '1981-2010'){
     raster <- raster(paste0(out_folder,'/',species,'/ensmean_hist/omth10.tif'))
   }else{
-    raster <- raster(paste0(out_folder,'/',species,'/2081-2100_ssp585/omth10.tif'))
+    raster <- raster(paste0(out_folder,'/',species,'/2071-2100_ssp585/omth10.tif'))
   }
 
   crs_raster <- crs(raster)
@@ -66,7 +63,7 @@ plot_proj_map<- function(stateID,state.name,species,time.period){
     geom_raster(data = df, aes(x = longitude, y = latitude, fill = value)) +
     # Border for the us
     geom_sf(data = us_map_transformed, fill = NA, color = "black", size = 0.5) +
-    geom_sf(data = state, fill = NA, color = "lightblue", size = 4) +
+    geom_sf(data = state, fill = NA, color = "blue", size = 4) +
     scale_fill_gradientn(colours = my.palette, limits = c(0, 1)) +
     theme_minimal() +
     theme(
@@ -79,7 +76,7 @@ plot_proj_map<- function(stateID,state.name,species,time.period){
       panel.background = element_rect(fill = 'white') #"#E6E6FA"
     )
   
-  plot.dir = paste0(outplot_folder,'/',species,'/proj_US_',time.period,'.jpg')
+  plot.dir = paste0(outplot_folder,'/',stateID,"_",species,'/proj_US_',time.period,'.jpg')
   ggsave(plot.dir, my_plot, dpi = 300, width = 8, height = 5, units = "in")
   
   #Make the plot for the state
@@ -105,20 +102,22 @@ plot_proj_map<- function(stateID,state.name,species,time.period){
       panel.background = element_rect(fill = 'white') #"#E6E6FA"
     )
   
-  plot.dir = paste0(outplot_folder,'/',species,'/proj_state_',time.period,'.jpg')
+  plot.dir = paste0(outplot_folder,'/',stateID,"_",species,'/proj_state_',time.period,'.jpg')
   ggsave(plot.dir, my_plot, dpi = 300, width = 4, height = 2.5, units = "in")
 }
 
-# input files
-all_stateID_species = read.csv(paste0('inputs/state_',ForI,'_all_plots.csv'))
+# generate the figures for individual species or multi-max of each states
+#all_stateID_species = read.csv(paste0('inputs/state_',ForI,'_all_multi_plots.csv'))
+all_stateID_species = read.csv(paste0('inputs/state_',ForI,'_multi_plots.csv'))
 len = nrow(all_stateID_species)
 
 for (i in (1:len)){
   stateID <- all_stateID_species$ID[i]
   state.name <- all_stateID_species$state[i]
   species<- all_stateID_species$spec_name[i]
-  plot_proj_map(stateID,state.name,species,'1971-2000')
-  plot_proj_map(stateID,state.name,species,'2081-2100')
+  print(paste0(i,"_",stateID,"_",state.name,"_",species))
+  plot_proj_map(stateID,state.name,species,'1981-2010')
+  plot_proj_map(stateID,state.name,species,'2071-2100')
 }
 
 

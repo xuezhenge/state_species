@@ -83,7 +83,7 @@ plot_proj_map<- function(stateIDs,time.period){
   state<- us_map_transformed[us_map_transformed$STUSPS== stateID, ]
   raster_data2 <- crop(raster_us, extent(state))
   raster_state <- mask(raster_data2, state)
-
+  
   raster_values <- getValues(raster_us)
   raster_coords <- xyFromCell(raster_us, 1:ncell(raster_us))
   df <- data.frame(longitude = raster_coords[, 1], latitude = raster_coords[, 2], value = raster_values)
@@ -138,9 +138,7 @@ plot_proj_map<- function(stateIDs,time.period){
   ggsave(plot.dir, my_plot, dpi = 300, width = 4, height = 2.5, units = "in")
 }
 
-states_NA <- c('NM1','NM2','NM3','NM4','NM5','NM6','NM7','NM10','NM11')
-states_ND <- c('ND1','IA')
-states_TX <- c('TX1','TX2','TX5')
+multipleID <- c('TX','MI','IN','ND','NM')
 stateIDlist <- list(states_NA, states_ND, states_TX)
 for (stateIDs in stateIDlist){
   plot_proj_map(stateIDs,'1971-2000')

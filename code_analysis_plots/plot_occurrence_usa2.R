@@ -8,16 +8,8 @@ library(usmap)
 options(tigris_use_cache = TRUE)
 
 ForI <- 'flowers'
-run_loc <- 'loc'
-account <- 'xge'
 
-if (run_loc=='cc'){
-  source(paste0("/home/",account,"/scratch/state_species_2024/codes/all_functions.R"))
-  setwd(paste0("/home/",account,"/scratch/state_species_2024"))
-}else{
-  source("/Volumes/UoG_xuezhen/state_species_2024/codes/all_functions.R")
-  setwd("/Volumes/UoG_xuezhen/state_species_2024")
-}
+setwd("/Volumes/UoG_xuezhen/state_species_2024/git/state_species")
 
 if (ForI == 'flowers'){
   out_folder = 'outputs_flowers'
