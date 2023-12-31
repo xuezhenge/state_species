@@ -109,6 +109,7 @@ plot_proj_map<- function(stateID,state.name,species,time.period){
   ggsave(plot.dir, my_plot, dpi = 300, width = 4, height = 2.5, units = "in")
 }
 
+# input files
 all_stateID_species = read.csv(paste0('inputs/state_',ForI,'_all_plots.csv'))
 len = nrow(all_stateID_species)
 
